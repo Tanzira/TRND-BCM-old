@@ -1,7 +1,7 @@
 # Transcriptional-regulatory-network-dysregulation-predicts-breast-cancer-metastasis
 
 # Dataset
-## All the intermediary files and datasets are uploaded here.
+## All the intermediary files and datasets can be found here.
 https://drive.google.com/drive/folders/1c2mL9j3MHGP8VReEtjGwChknLTjiO3UB?usp=sharing
 
 ## CoefficientCalculationLassoForGRN.py

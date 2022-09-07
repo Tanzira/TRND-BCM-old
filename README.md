@@ -1,7 +1,7 @@
 # Transcriptional-regulatory-network-dysregulation-predicts-breast-cancer-metastasis
 
 ### CoefficientCalculationLassoForGRN.py
-  ### It calculates two coefficient files for metastatic and non metastatic cancer patients. 
+  #### It calculates two coefficient files for metastatic and non metastatic cancer patients. 
 
 ### TFTFCoregulatoryNet.py
   #### This file reads the coefficient files and generates the network in different ways.

@@ -15,7 +15,7 @@ Calculate two coefficient files for metastatic and non metastatic cancer patient
 ## LassoCrossValidationForR2Calc.py
 Generate $R^2$ for a range of $\lambda$ values
 
-## GettingTheFiles.py
+## ModelGeneration.py
 - Generate ensembl models for classification using both stratified k-fold cross-validation and leave-one-study-out cross-validation
 - Save the model and intermediary files
 

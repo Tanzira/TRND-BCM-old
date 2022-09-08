@@ -171,8 +171,7 @@ ax.text(0.5, -0.465, '(b)', ha = 'center', fontsize = 16,
 
 n_iter = 50
 
-#auc_scores = pd.read_csv('./IntermediaryFiles/AUC_scores_for_different_models_for50_iteration.csv', index_col=0)
-auc_scores = pd.read_csv('./IntermediaryFiles/stratified_AUC_scores_for_different_models_for_50_iteration_v4.csv', index_col=0)
+auc_scores = pd.read_csv('./Dataset/IntermediaryFiles/stratified_AUC_scores_for_different_models_for_50_iteration_v4.csv', index_col=0)
 
 auc_scores = auc_scores.loc[:, ['DysRegScore',
                                 'RF',
@@ -200,7 +199,7 @@ heights = auc_scores.max(axis = 0).values
 # LOSO bar for 3 methods with 50 iterations
 niter = 50
 ax = axes[4]
-loso_3_method = pd.read_csv('./IntermediaryFiles/loso_3_methods_50_iteration_v4.csv', index_col=0)
+loso_3_method = pd.read_csv('./Dataset/IntermediaryFiles/loso_3_methods_50_iteration_v4.csv', index_col=0)
 loso_3_method.iloc[:, [1, 0, 2]].plot.bar(ax = ax)
 ax.set_xticklabels(ax.get_xticklabels(), rotation = tick_rotation, ha = 'right')
 ax.set_ylim([0.4,1])

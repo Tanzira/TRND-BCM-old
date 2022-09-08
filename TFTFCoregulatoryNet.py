@@ -113,7 +113,8 @@ def saving_tf_tf_coreg_antireg_network(tf_tf_coreg, tf_tf_antireg, fname):
         print(nx.info(G))
         save_file = root_path + '/tf_tf_{0}_edge_th_{1}_alpha_{2}_coef_{3}_V3.gml'.\
                 format(fname, edge_th, alpha_val, coef_th)
-        nx.write_gml(G, save_file)
+        #uncomment this line if you want to save the gml files
+        #nx.write_gml(G, save_file)
         
         
 saving_tf_tf_coreg_antireg_network(coreg_meta, antireg_meta, 'meta_anti_coreg')
@@ -230,11 +231,9 @@ for corr_th in [0.2, 0.3, 0.4]:
     #creating network with networkx using dataframe adj matrix
     tf_tf_GM = nx.convert_matrix.from_pandas_adjacency(meta_coreg)
     tf_tf_GNM = nx.convert_matrix.from_pandas_adjacency(nmeta_coreg)
+ 
    
-
-    topology_col = ['metastatic', 'non_metastatic']
-   
-    net_topology = pd.DataFrame(0.0, columns=topology_col)
+    net_topology = pd.DataFrame(columns=['metastatic', 'non_metastatic'])
     singleton = False
     n_edges_m, n_singltn_m, lcc_m, avg_deg_m, l_deg_m, avg_cc_m, avg_spl_m, d_m = network_topology(tf_tf_GM.copy(), singleton)
     n_edges_nm, n_singltn_nm, lcc_nm, avg_deg_nm, l_deg_nm, avg_cc_nm, avg_spl_nm, d_nm = network_topology(tf_tf_GNM.copy(), singleton)

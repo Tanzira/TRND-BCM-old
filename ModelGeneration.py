@@ -244,6 +244,148 @@ predicted_scores['SVC'] = l_scr_svcl
 
 #Uncomment if you would like to save the calculations. Other models takes time to compute everything specially MLP
 # predicted_scores.to_csv('./predicted_scores_for_10_fold_cv_v4.csv')
+#%% AUC calculation 50 Stratified
+data_raw  = loadmat(root_path + 'ACES_Data/ACESExpr.mat')['data']
+p_type = loadmat(root_path + 'ACES_Data/ACESLabel.mat')['label']
+entrez_id = loadmat(root_path + 'ACES_Data/ACES_EntrezIds.mat')['entrez_ids']
+expr_data = pd.DataFrame(data_raw)
+expr_data.columns = entrez_id.reshape(-1)
+
+tf_file = 'http://humantfs.ccbr.utoronto.ca/download/v_1.01/DatabaseExtract_v_1.01.txt'
+human_tfs = pd.read_csv(tf_file, sep = '\t', usecols=(1, 2, 4, 5, 11))
+human_tfs = human_tfs[human_tfs['Is TF?'] =='Yes']
+human_tfs.set_index('EntrezGene ID', inplace = True)
+
+common_tf = np.intersect1d(expr_data.columns.astype('str'), human_tfs.index).tolist()
+common_tf = list(map(int, common_tf))
+tf_locs = [expr_data.columns.get_loc(c) for c in common_tf]
+
+data = expr_data.to_numpy()
+p_type = p_type.ravel()
+
+alphas = [2, 1, 0.5, 0.25, 0.13, 0.06, 0.03, 0.01, 0.008, 0.004]
+n_fold = 10
+
+cv = StratifiedKFold(n_splits=n_fold, random_state=42, shuffle=True)
+
+dir_name = './MetaNonMetaModelsWithStratifiedKFold/Folds_10'
+niter = 50
+auc_scores = pd.DataFrame( 0, index = np.arange(niter), columns = ['DysRegScore', 'RF', 'LogisticR', 'DecTree', 'KNN', 'MLP', 'SVC'])
+for i in range(niter):
+    # l_pred_lasso, l_pred_rf, l_pred_logr, l_pred_dtc, l_pred_knnc, l_pred_mlpc, l_pred_svcl = [], [], [], [], [], [], []
+    all_true = []
+    scores_lasso, scores_rf, scores_logr, scores_dtc, scores_knnc, scores_mlpc, scores_svcl = [], [], [], [], [], [], []
+    # auc_lasso, auc_rf, auc_logr, auc_dtc, auc_knnc, auc_mlpc, auc_svcl = [], [], [], [], [], [], []
+    idx = -1
+    print("iteration: ", i)
+    for train_index, test_index in cv.split(data, p_type):
+        idx += 1
+        print('CV_IDX: ', idx)
+        data_train, data_test, c_train, c_test = data[train_index], data[test_index],\
+            p_type[train_index], p_type[test_index]
+        data_train_meta = data_train[c_train == 1, :]
+        data_train_nmeta = data_train[c_train == 0, :]
+        
+        chosen_idx = np.random.choice(len(data_test), replace=False, size=int(len(data_test)*0.8))
+        data_test, c_test = data_test[chosen_idx], c_test[chosen_idx]
+        
+        f1 = dir_name + '/meta_models_with_diff_alpha_cv_' + str(idx) + '.pkl'
+        f2 = dir_name + '/nmeta_models_with_diff_alpha_cv_' + str(idx) + '.pkl'
+        with open(f1,'rb') as f:
+            models_meta = pickle.load(f)
+        with open(f2,'rb') as f11:
+            models_nmeta = pickle.load(f11)
+            
+        models_meta = models_meta[4:-2]
+        models_nmeta = models_nmeta[4:-2]
+        print(models_meta.shape)
+        x_test = data_test[:, tf_locs] # expression levels of TFs
+        n_iter = models_meta.shape[0]
+    
+        exp_pred_1 = np.tile(x_test, [n_iter, 1, 1]) @ models_meta # predicted expression levels of all genes using class = metastatic models
+        exp_pred_0 = np.tile(x_test, [n_iter, 1, 1]) @ models_nmeta # predicted expression levels of all genes using class = non-metastatic models
+    
+        avg_pred_1 = exp_pred_1.mean(axis =0)
+        avg_pred_0 = exp_pred_0.mean(axis =0)
+        
+        # calculate euclidean scores for each model
+        s1 = np.linalg.norm(data_test - avg_pred_1, axis = 1)
+        s0 = np.linalg.norm(data_test - avg_pred_0, axis = 1)
+                          
+        m1 = RandomForestClassifier(random_state = None)
+        m2 = LogisticRegression(solver='liblinear', random_state=None)
+        m3 = DecisionTreeClassifier(random_state = None)
+        m4 = KNeighborsClassifier()#No random state in parameter
+        m5 = MLPClassifier(random_state=None)#Neural network classifier
+        m6 = svm.SVC(kernel = 'linear', random_state=None, probability=True)
+        
+        m1.fit(data_train, c_train)
+        m2.fit(data_train, c_train)
+        m3.fit(data_train, c_train)
+        m4.fit(data_train, c_train)
+        m5.fit(data_train, c_train)
+        m6.fit(data_train, c_train)
+        
+        pred_lasso = s0-s1
+        
+        y_pred_lasso = [int(l >= 0) for l in pred_lasso]
+        
+        pred_rf = m1.predict_proba(data_test)[:, 1]
+        # y_pred_rf = m1.predict(data_test)
+        
+        pred_logr = m2.predict_proba(data_test)[:, 1]
+        # y_pred_logr = m2.predict(data_test)
+        
+        pred_dtc = m3.predict_proba(data_test)[:, 1]
+        # y_pred_dtc = m3.predict(data_test)
+        
+        pred_knnc = m4.predict_proba(data_test)[:, 1]
+        # y_pred_knnc = m4.predict(data_test)
+        
+        pred_mlpc = m5.predict_proba(data_test)[:, 1]
+        # y_pred_mlpc = m5.predict(data_test)
+        
+        pred_svcl = m6.predict_proba(data_test)[:, 1]
+        # y_pred_svcl = m6.predict(data_test)
+        
+        # l_pred_lasso.extend(y_pred_lasso)
+        scores_lasso.extend(pred_lasso)
+        # auc_lasso.append(roc_auc_score(c_test, pred_lasso))
+        
+        # l_pred_rf.extend(y_pred_rf)
+        scores_rf.extend(pred_rf)
+        # auc_rf.append(roc_auc_score(c_test, pred_rf))
+        
+        # l_pred_logr.extend(y_pred_logr)
+        scores_logr.extend(pred_logr)
+        # auc_logr.append(roc_auc_score(c_test, pred_logr))
+        
+        # l_pred_dtc.extend(y_pred_dtc)
+        scores_dtc.extend(pred_dtc)
+        # auc_dtc.append(roc_auc_score(c_test, pred_dtc))
+        
+        # l_pred_knnc.extend(y_pred_knnc)
+        scores_knnc.extend(pred_knnc)
+        # auc_knnc.append(roc_auc_score(c_test, pred_knnc))
+        
+        # l_pred_mlpc.extend(y_pred_mlpc)
+        scores_mlpc.extend(pred_mlpc)
+        # auc_mlpc.append(roc_auc_score(c_test, pred_mlpc))
+        
+        # l_pred_svcl.extend(y_pred_svcl)
+        scores_svcl.extend(pred_svcl)
+        # auc_svcl.append(roc_auc_score(c_test, pred_svcl))
+    
+        all_true.extend(c_test)
+    #calculating AUC for different models
+
+    auc_lasso, auc_rf, auc_logr, auc_dtc, auc_knnc, auc_mlpc, auc_svcl = roc_auc_score(all_true, scores_lasso),\
+                roc_auc_score(all_true, scores_rf), roc_auc_score(all_true, scores_logr),\
+                roc_auc_score(all_true, scores_dtc), roc_auc_score(all_true, scores_knnc),\
+                roc_auc_score(all_true, scores_mlpc), roc_auc_score(all_true, scores_svcl)
+    auc_scores.iloc[i] = [auc_lasso, auc_rf, auc_logr, auc_dtc, auc_knnc, auc_mlpc, auc_svcl]
+
+auc_scores.to_csv('stratified_AUC_scores_for_different_models_for_{}_iteration_v4.csv'.format(niter))
 
 #%% Building the LOSO models
 
